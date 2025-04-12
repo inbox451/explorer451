@@ -49,10 +49,6 @@ frontend/yarn-error.log*
 frontend/pnpm-debug.log*
 frontend/lerna-debug.log*
 
-frontend/node_modules
-frontend/dist
-frontend/dist-ssr
-
 # Ignore config files
 config.yml
 config.yaml
@@ -61,7 +57,6 @@ config.yaml
 /tmp
 
 # Ignore explorer451 excutable, distribution and binaries
-explorer451
 install
 uninstall
 /dist

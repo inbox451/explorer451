@@ -12,7 +12,7 @@ import (
 
 const (
 	// EnvPrefix is the prefix for environment variables
-	EnvPrefix = "S3EXPLORER_"
+	EnvPrefix = "EXPLORER451_"
 )
 
 // Config holds all application configuration
@@ -52,7 +52,7 @@ func Load() (*Config, error) {
 
 	// Load environment variables
 	callback := func(s string) string {
-		// Convert S3EXPLORER_SERVER_ADDRESS to server.address
+		// Convert EXPLORER451_SERVER_ADDRESS to server.address
 		path := strings.Replace(strings.ToLower(strings.TrimPrefix(s, EnvPrefix)), "_", ".", -1)
 		return path
 	}
