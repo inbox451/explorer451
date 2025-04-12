@@ -1,4 +1,4 @@
 # These owners will be the default owners for everything in
 # the repo. They will be requested for review when someone
 # opens a pull request.
-*       @inbox451/explorer451-maintainers
+*       @inbox451/inbox451-maintainers
