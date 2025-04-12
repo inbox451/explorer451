@@ -1,0 +1,9 @@
+server:
+  address: ":8080"
+
+aws:
+  region: "us-east-1"
+
+log:
+  level: "info"  # debug, info, warn, error
+  format: "json" # json, console

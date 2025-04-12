@@ -1,0 +1,10 @@
+{
+  ".": "0.1.0",
+  "packages": {
+    ".": {
+      "release-type": "go",
+      "package-name": "explorer451",
+      "extra-files": ["go.mod", "go.sum"]
+    }
+  }
+}

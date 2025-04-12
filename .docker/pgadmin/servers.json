@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Local PostgreSQL",
+      "Group": "Explorer451",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "explorer451",
+      "Password": "explorer451",
+      "SSLMode": "disable"
+    }
+  }
+}
