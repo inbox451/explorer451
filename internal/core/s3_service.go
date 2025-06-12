@@ -2,13 +2,15 @@ package core
 
 import (
 	"context"
-	"explorer451/internal/models"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"explorer451/internal/models"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 // S3Service handles S3 operations
@@ -151,7 +153,6 @@ func (s *S3Service) GetPresignedURL(ctx context.Context, bucket, key string, exp
 		func(opts *s3.PresignOptions) {
 			opts.Expires = time.Duration(expiresIn) * time.Second
 		})
-
 	if err != nil {
 		s.core.Logger.Error().
 			Err(err).
@@ -162,6 +163,201 @@ func (s *S3Service) GetPresignedURL(ctx context.Context, bucket, key string, exp
 	}
 
 	return resp.URL, nil
+}
+
+// GeneratePresignedPostURL generates a presigned POST URL for uploading objects
+func (s *S3Service) GeneratePresignedPostURL(ctx context.Context, bucket, key, contentType string, expiresIn time.Duration, maxSize int64) (*models.PresignedPostURLResponse, error) {
+	s.core.Logger.Debug().
+		Str("bucket", bucket).
+		Str("key", key).
+		Str("contentType", contentType).
+		Dur("expiresIn", expiresIn).
+		Int64("maxSize", maxSize).
+		Msg("Generating presigned POST URL")
+
+	if expiresIn <= 0 {
+		expiresIn = 15 * time.Minute // Default to 15 minutes
+	}
+
+	// Set default max size if not specified (10MB)
+	if maxSize <= 0 {
+		maxSize = 10 * 1024 * 1024 // 10MB
+	}
+
+	// Create presigned POST policy
+	resp, err := s.core.S3Presigner.PresignPostObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(bucket),
+		Key:         aws.String(key),
+		ContentType: aws.String(contentType),
+	}, func(opts *s3.PresignPostOptions) {
+		opts.Expires = expiresIn
+		opts.Conditions = append(opts.Conditions,
+			// Restrict content type
+			[]interface{}{"eq", "$Content-Type", contentType},
+			// Restrict content length
+			[]interface{}{"content-length-range", 0, maxSize},
+		)
+	})
+	if err != nil {
+		s.core.Logger.Error().
+			Err(err).
+			Str("bucket", bucket).
+			Str("key", key).
+			Msg("Failed to generate presigned POST URL")
+		return nil, err
+	}
+
+	return &models.PresignedPostURLResponse{
+		URL:    resp.URL,
+		Fields: resp.Values,
+	}, nil
+}
+
+// DeleteObject deletes a single object from S3
+func (s *S3Service) DeleteObject(ctx context.Context, bucket, key string) error {
+	s.core.Logger.Debug().
+		Str("bucket", bucket).
+		Str("key", key).
+		Msg("Deleting object")
+
+	_, err := s.core.S3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		s.core.Logger.Error().
+			Err(err).
+			Str("bucket", bucket).
+			Str("key", key).
+			Msg("Failed to delete object")
+		return err
+	}
+
+	s.core.Logger.Info().
+		Str("bucket", bucket).
+		Str("key", key).
+		Msg("Successfully deleted object")
+
+	return nil
+}
+
+// DeleteObjectsByPrefix deletes all objects with the given prefix (folder deletion)
+func (s *S3Service) DeleteObjectsByPrefix(ctx context.Context, bucket, prefix string) error {
+	s.core.Logger.Debug().
+		Str("bucket", bucket).
+		Str("prefix", prefix).
+		Msg("Deleting objects by prefix")
+
+	// First, list all objects with the prefix
+	input := &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(prefix),
+	}
+
+	var objectsToDelete []s3Types.ObjectIdentifier
+	paginator := s3.NewListObjectsV2Paginator(s.core.S3Client, input)
+
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			s.core.Logger.Error().
+				Err(err).
+				Str("bucket", bucket).
+				Str("prefix", prefix).
+				Msg("Failed to list objects for deletion")
+			return err
+		}
+
+		for _, obj := range page.Contents {
+			objectsToDelete = append(objectsToDelete, s3Types.ObjectIdentifier{
+				Key: obj.Key,
+			})
+		}
+	}
+
+	if len(objectsToDelete) == 0 {
+		s.core.Logger.Info().
+			Str("bucket", bucket).
+			Str("prefix", prefix).
+			Msg("No objects found with prefix, nothing to delete")
+		return nil
+	}
+
+	// Delete objects in batches of 1000 (AWS limit)
+	batchSize := 1000
+	for i := 0; i < len(objectsToDelete); i += batchSize {
+		end := i + batchSize
+		if end > len(objectsToDelete) {
+			end = len(objectsToDelete)
+		}
+
+		batch := objectsToDelete[i:end]
+		_, err := s.core.S3Client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+			Bucket: aws.String(bucket),
+			Delete: &s3Types.Delete{
+				Objects: batch,
+				Quiet:   aws.Bool(false), // Get detailed response
+			},
+		})
+		if err != nil {
+			s.core.Logger.Error().
+				Err(err).
+				Str("bucket", bucket).
+				Str("prefix", prefix).
+				Int("batchStart", i).
+				Int("batchEnd", end).
+				Msg("Failed to delete batch of objects")
+			return err
+		}
+
+		s.core.Logger.Info().
+			Str("bucket", bucket).
+			Str("prefix", prefix).
+			Int("count", len(batch)).
+			Msg("Successfully deleted batch of objects")
+	}
+
+	s.core.Logger.Info().
+		Str("bucket", bucket).
+		Str("prefix", prefix).
+		Int("totalDeleted", len(objectsToDelete)).
+		Msg("Successfully deleted all objects with prefix")
+
+	return nil
+}
+
+// CreateFolder creates a "folder" in S3 by creating a zero-byte object with a trailing slash
+func (s *S3Service) CreateFolder(ctx context.Context, bucket, key string) error {
+	s.core.Logger.Debug().
+		Str("bucket", bucket).
+		Str("key", key).
+		Msg("Creating folder")
+
+	// Ensure key ends with '/'
+	if !strings.HasSuffix(key, "/") {
+		key = key + "/"
+	}
+
+	_, err := s.core.S3Client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+		Body:   strings.NewReader(""), // Empty body for folder marker
+	})
+	if err != nil {
+		s.core.Logger.Error().
+			Err(err).
+			Str("bucket", bucket).
+			Str("key", key).
+			Msg("Failed to create folder")
+		return err
+	}
+
+	s.core.Logger.Info().
+		Str("bucket", bucket).
+		Str("key", key).
+		Msg("Successfully created folder")
+
+	return nil
 }
 
 // detectContentType detects the content type of a file based on its extension

@@ -4,6 +4,10 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
+
+	"explorer451/internal/models"
 
 	"github.com/aws/smithy-go"
 	"github.com/labstack/echo/v4"
@@ -43,7 +47,6 @@ func (s *Server) listObjects(c echo.Context) error {
 		delimiter,
 		maxKeys,
 	)
-
 	if err != nil {
 		// Map common AWS errors to appropriate HTTP status
 		if isNoSuchBucketError(err) {
@@ -94,6 +97,153 @@ func (s *Server) getPresignedURL(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"url": url})
+}
+
+// deleteObject handles DELETE /api/buckets/:bucket/objects/*
+func (s *Server) deleteObject(c echo.Context) error {
+	bucket := c.Param("bucket")
+	key := c.Param("*")
+	recursive := c.QueryParam("recursive") == "true"
+
+	// If recursive is true, delete by prefix (folder deletion)
+	if recursive {
+		err := s.core.S3Service.DeleteObjectsByPrefix(c.Request().Context(), bucket, key)
+		if err != nil {
+			if isNoSuchBucketError(err) {
+				return echo.NewHTTPError(http.StatusNotFound, "Bucket not found")
+			}
+			if isAccessDeniedError(err) {
+				return echo.NewHTTPError(http.StatusForbidden, "Access denied")
+			}
+
+			s.core.Logger.Error().
+				Err(err).
+				Str("bucket", bucket).
+				Str("prefix", key).
+				Msg("Error deleting objects by prefix")
+			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to delete folder")
+		}
+	} else {
+		// Single object deletion
+		err := s.core.S3Service.DeleteObject(c.Request().Context(), bucket, key)
+		if err != nil {
+			if isNoSuchBucketError(err) {
+				return echo.NewHTTPError(http.StatusNotFound, "Bucket not found")
+			}
+			if isNoSuchKeyError(err) {
+				return echo.NewHTTPError(http.StatusNotFound, "Object not found")
+			}
+			if isAccessDeniedError(err) {
+				return echo.NewHTTPError(http.StatusForbidden, "Access denied")
+			}
+
+			s.core.Logger.Error().
+				Err(err).
+				Str("bucket", bucket).
+				Str("key", key).
+				Msg("Error deleting object")
+			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to delete object")
+		}
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+// createFolder handles POST /api/buckets/:bucket/objects
+func (s *Server) createFolder(c echo.Context) error {
+	bucket := c.Param("bucket")
+
+	var req models.CreateFolderRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
+	}
+
+	// Validate that key ends with '/' or add it if missing
+	if !strings.HasSuffix(req.Key, "/") {
+		req.Key = req.Key + "/"
+	}
+
+	// Validate type field
+	if req.Type != "folder" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Type must be 'folder'")
+	}
+
+	err := s.core.S3Service.CreateFolder(c.Request().Context(), bucket, req.Key)
+	if err != nil {
+		if isNoSuchBucketError(err) {
+			return echo.NewHTTPError(http.StatusNotFound, "Bucket not found")
+		}
+		if isAccessDeniedError(err) {
+			return echo.NewHTTPError(http.StatusForbidden, "Access denied")
+		}
+
+		s.core.Logger.Error().
+			Err(err).
+			Str("bucket", bucket).
+			Str("key", req.Key).
+			Msg("Error creating folder")
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to create folder")
+	}
+
+	return c.JSON(http.StatusCreated, map[string]string{
+		"message": "Folder created successfully",
+		"key":     req.Key,
+	})
+}
+
+// generatePresignedPostURL handles POST /api/buckets/:bucket/presigned-post-url
+func (s *Server) generatePresignedPostURL(c echo.Context) error {
+	bucket := c.Param("bucket")
+
+	var req models.PresignedPostURLRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
+	}
+
+	// Validate required fields
+	if req.Key == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Key is required")
+	}
+	if req.ContentType == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Content type is required")
+	}
+
+	// Set default values if not provided
+	expiresIn := time.Duration(req.ExpiresInSeconds) * time.Second
+	if req.ExpiresInSeconds <= 0 {
+		expiresIn = 15 * time.Minute // Default to 15 minutes
+	}
+
+	maxSize := req.MaxSizeBytes
+	if maxSize <= 0 {
+		maxSize = 10 * 1024 * 1024 // Default to 10MB
+	}
+
+	response, err := s.core.S3Service.GeneratePresignedPostURL(
+		c.Request().Context(),
+		bucket,
+		req.Key,
+		req.ContentType,
+		expiresIn,
+		maxSize,
+	)
+	if err != nil {
+		if isNoSuchBucketError(err) {
+			return echo.NewHTTPError(http.StatusNotFound, "Bucket not found")
+		}
+		if isAccessDeniedError(err) {
+			return echo.NewHTTPError(http.StatusForbidden, "Access denied")
+		}
+
+		s.core.Logger.Error().
+			Err(err).
+			Str("bucket", bucket).
+			Str("key", req.Key).
+			Msg("Error generating presigned POST URL")
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to generate presigned POST URL")
+	}
+
+	return c.JSON(http.StatusOK, response)
 }
 
 // Helper functions to identify AWS error types
