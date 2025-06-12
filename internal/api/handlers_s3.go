@@ -47,6 +47,7 @@ func (s *Server) listObjects(c echo.Context) error {
 		delimiter,
 		maxKeys,
 	)
+
 	if err != nil {
 		// Map common AWS errors to appropriate HTTP status
 		if isNoSuchBucketError(err) {

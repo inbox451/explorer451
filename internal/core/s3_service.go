@@ -153,6 +153,7 @@ func (s *S3Service) GetPresignedURL(ctx context.Context, bucket, key string, exp
 		func(opts *s3.PresignOptions) {
 			opts.Expires = time.Duration(expiresIn) * time.Second
 		})
+
 	if err != nil {
 		s.core.Logger.Error().
 			Err(err).
