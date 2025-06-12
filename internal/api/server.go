@@ -63,6 +63,7 @@ func (s *Server) setupRoutes() {
 	api.GET("/buckets", s.listBuckets)
 	api.GET("/buckets/:bucket/objects", s.listObjects)
 	api.GET("/buckets/:bucket/objects/*", s.getPresignedURL)
-
-	// Add more routes as needed
+	api.DELETE("/buckets/:bucket/objects/*", s.deleteObject)
+	api.POST("/buckets/:bucket/objects", s.createFolder)
+	api.POST("/buckets/:bucket/presigned-post-url", s.generatePresignedPostURL)
 }
