@@ -28,7 +28,8 @@ BIN := bin/explorer451
 # ==================================================================================== #
 
 # Start development server
-dev: CGO_ENABLED=0 $(GO) run -ldflags="${LD_FLAGS}" cmd/*.go
+dev:
+	CGO_ENABLED=0 $(GO) run -ldflags="${LD_FLAGS}" cmd/*.go
 
 # Install all dependencies
 deps: $(STUFFBIN)
