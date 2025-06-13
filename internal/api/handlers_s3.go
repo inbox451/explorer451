@@ -24,6 +24,27 @@ func (s *Server) listBuckets(c echo.Context) error {
 	return c.JSON(http.StatusOK, buckets)
 }
 
+// getBucketDetails handles GET /api/buckets/:bucket/details
+func (s *Server) getBucketDetails(c echo.Context) error {
+	bucket := c.Param("bucket")
+
+	details, err := s.core.S3Service.GetBucketDetails(c.Request().Context(), bucket)
+	if err != nil {
+		// Map common AWS errors to appropriate HTTP status
+		if isNoSuchBucketError(err) {
+			return echo.NewHTTPError(http.StatusNotFound, "Bucket not found")
+		}
+		if isAccessDeniedError(err) {
+			return echo.NewHTTPError(http.StatusForbidden, "Access denied")
+		}
+
+		s.core.Logger.Error().Err(err).Str("bucket", bucket).Msg("Error getting bucket details")
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get bucket details")
+	}
+
+	return c.JSON(http.StatusOK, details)
+}
+
 // listObjects handles GET /api/buckets/:bucket/objects
 func (s *Server) listObjects(c echo.Context) error {
 	bucket := c.Param("bucket")
@@ -47,7 +68,6 @@ func (s *Server) listObjects(c echo.Context) error {
 		delimiter,
 		maxKeys,
 	)
-
 	if err != nil {
 		// Map common AWS errors to appropriate HTTP status
 		if isNoSuchBucketError(err) {
@@ -64,10 +84,10 @@ func (s *Server) listObjects(c echo.Context) error {
 	return c.JSON(http.StatusOK, objects)
 }
 
-// getPresignedURL handles GET /api/buckets/:bucket/objects/:key/presigned-url
+// getPresignedURL handles GET /api/buckets/:bucket/objects/*
 func (s *Server) getPresignedURL(c echo.Context) error {
 	bucket := c.Param("bucket")
-	key := c.Param("key")
+	key := c.Param("*")
 
 	// Parse expiration time in seconds (default 15 minutes if not specified)
 	expiresIn := int64(15 * 60)
@@ -247,6 +267,54 @@ func (s *Server) generatePresignedPostURL(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
+// getObjectMetadata handles HEAD /api/buckets/:bucket/objects/*
+func (s *Server) getObjectMetadata(c echo.Context) error {
+	bucket := c.Param("bucket")
+	key := c.Param("*")
+
+	metadata, err := s.core.S3Service.GetObjectMetadata(c.Request().Context(), bucket, key)
+	if err != nil {
+		if isNoSuchBucketError(err) {
+			return echo.NewHTTPError(http.StatusNotFound, "Bucket not found")
+		}
+		if isNoSuchKeyError(err) {
+			return echo.NewHTTPError(http.StatusNotFound, "Object not found")
+		}
+		if isAccessDeniedError(err) {
+			return echo.NewHTTPError(http.StatusForbidden, "Access denied")
+		}
+
+		s.core.Logger.Error().
+			Err(err).
+			Str("bucket", bucket).
+			Str("key", key).
+			Msg("Error getting object metadata")
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get object metadata")
+	}
+
+	// For HEAD request, set response headers
+	c.Response().Header().Set("Content-Type", metadata.ContentType)
+	c.Response().Header().Set("Content-Length", strconv.FormatInt(metadata.ContentLength, 10))
+	c.Response().Header().Set("ETag", metadata.ETag)
+	c.Response().Header().Set("Last-Modified", metadata.LastModified.Format(time.RFC1123))
+	if metadata.StorageClass != "" {
+		c.Response().Header().Set("x-amz-storage-class", metadata.StorageClass)
+	}
+	if metadata.ServerSideEncryption != "" {
+		c.Response().Header().Set("x-amz-server-side-encryption", metadata.ServerSideEncryption)
+	}
+	if metadata.VersionId != "" {
+		c.Response().Header().Set("x-amz-version-id", metadata.VersionId)
+	}
+
+	// Add user metadata headers
+	for k, v := range metadata.UserMetadata {
+		c.Response().Header().Set("x-amz-meta-"+k, v)
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
 // Helper functions to identify AWS error types
 func isNoSuchBucketError(err error) bool {
 	var apiErr smithy.APIError
@@ -267,7 +335,7 @@ func isAccessDeniedError(err error) bool {
 func isNoSuchKeyError(err error) bool {
 	var apiErr smithy.APIError
 	if errors.As(err, &apiErr) {
-		return apiErr.ErrorCode() == "NoSuchKey"
+		return apiErr.ErrorCode() == "NoSuchKey" || apiErr.ErrorCode() == "NotFound"
 	}
 	return false
 }

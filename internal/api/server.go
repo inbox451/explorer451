@@ -61,8 +61,10 @@ func (s *Server) setupRoutes() {
 
 	// Bucket endpoints
 	api.GET("/buckets", s.listBuckets)
+	api.GET("/buckets/:bucket/details", s.getBucketDetails)
 	api.GET("/buckets/:bucket/objects", s.listObjects)
 	api.GET("/buckets/:bucket/objects/*", s.getPresignedURL)
+	api.HEAD("/buckets/:bucket/objects/*", s.getObjectMetadata)
 	api.DELETE("/buckets/:bucket/objects/*", s.deleteObject)
 	api.POST("/buckets/:bucket/objects", s.createFolder)
 	api.POST("/buckets/:bucket/presigned-post-url", s.generatePresignedPostURL)

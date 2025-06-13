@@ -46,6 +46,47 @@ func (s *S3Service) ListBuckets(ctx context.Context) ([]models.Bucket, error) {
 	return buckets, nil
 }
 
+// GetBucketDetails retrieves detailed information about a bucket including its region
+func (s *S3Service) GetBucketDetails(ctx context.Context, bucketName string) (*models.BucketDetail, error) {
+	s.core.Logger.Debug().Str("bucket", bucketName).Msg("Getting bucket details")
+
+	// Get bucket location/region
+	locationResp, err := s.core.S3Client.GetBucketLocation(ctx, &s3.GetBucketLocationInput{
+		Bucket: aws.String(bucketName),
+	})
+	if err != nil {
+		s.core.Logger.Error().Err(err).Str("bucket", bucketName).Msg("Failed to get bucket location")
+		return nil, err
+	}
+
+	// The location constraint can be empty for us-east-1
+	region := string(locationResp.LocationConstraint)
+	if region == "" {
+		region = "us-east-1"
+	}
+
+	// Get bucket creation date from ListBuckets
+	bucketsResp, err := s.core.S3Client.ListBuckets(ctx, &s3.ListBucketsInput{})
+	if err != nil {
+		s.core.Logger.Error().Err(err).Msg("Failed to list buckets")
+		return nil, err
+	}
+
+	var creationDate time.Time
+	for _, bucket := range bucketsResp.Buckets {
+		if aws.ToString(bucket.Name) == bucketName {
+			creationDate = aws.ToTime(bucket.CreationDate)
+			break
+		}
+	}
+
+	return &models.BucketDetail{
+		Name:         bucketName,
+		Region:       region,
+		CreationDate: creationDate,
+	}, nil
+}
+
 // ListObjects lists objects in a bucket with optional prefix for folder navigation
 func (s *S3Service) ListObjects(ctx context.Context, bucket, prefix, nextToken string, delimiter string, maxKeys int32) (*models.ListObjectsResponse, error) {
 	s.core.Logger.Debug().
@@ -127,7 +168,7 @@ func (s *S3Service) ListObjects(ctx context.Context, bucket, prefix, nextToken s
 		})
 	}
 
-	response.TotalItems = len(response.Objects)
+	response.ItemsInPage = len(response.Objects)
 	return response, nil
 }
 
@@ -153,7 +194,6 @@ func (s *S3Service) GetPresignedURL(ctx context.Context, bucket, key string, exp
 		func(opts *s3.PresignOptions) {
 			opts.Expires = time.Duration(expiresIn) * time.Second
 		})
-
 	if err != nil {
 		s.core.Logger.Error().
 			Err(err).
@@ -164,6 +204,45 @@ func (s *S3Service) GetPresignedURL(ctx context.Context, bucket, key string, exp
 	}
 
 	return resp.URL, nil
+}
+
+// GetObjectMetadata retrieves detailed metadata for an S3 object
+func (s *S3Service) GetObjectMetadata(ctx context.Context, bucket, key string) (*models.ObjectMetadata, error) {
+	s.core.Logger.Debug().
+		Str("bucket", bucket).
+		Str("key", key).
+		Msg("Getting object metadata")
+
+	output, err := s.core.S3Client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		s.core.Logger.Error().
+			Err(err).
+			Str("bucket", bucket).
+			Str("key", key).
+			Msg("Failed to get object metadata")
+		return nil, err
+	}
+
+	metadata := &models.ObjectMetadata{
+		Key:           key,
+		ContentType:   aws.ToString(output.ContentType),
+		ContentLength: aws.ToInt64(output.ContentLength),
+		ETag:          aws.ToString(output.ETag),
+		LastModified:  aws.ToTime(output.LastModified),
+		StorageClass:  string(output.StorageClass),
+		UserMetadata:  output.Metadata,
+		VersionId:     aws.ToString(output.VersionId),
+	}
+
+	// Add server-side encryption info if present
+	if output.ServerSideEncryption != "" {
+		metadata.ServerSideEncryption = string(output.ServerSideEncryption)
+	}
+
+	return metadata, nil
 }
 
 // GeneratePresignedPostURL generates a presigned POST URL for uploading objects

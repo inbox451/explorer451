@@ -35,7 +35,7 @@ curl http://localhost:8080/api/buckets/nb-bucket-eu-central-1/objects
       }
    ],
    "isTruncated":false,
-   "totalItems":2,
+   "itemsInPage":2,
    "pageSize":100
 }
 ```
@@ -56,7 +56,7 @@ curl http://localhost:8080/api/buckets/nb-bucket-eu-central-1/objects?prefix=fol
       }
    ],
    "isTruncated":false,
-   "totalItems":2,
+   "itemsInPage":2,
    "pageSize":100
 }
 ```
