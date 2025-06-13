@@ -24,7 +24,7 @@ type ObjectInfo struct {
 type ListObjectsResponse struct {
 	Objects     []ObjectInfo `json:"objects"`
 	IsTruncated bool         `json:"isTruncated"`
-	TotalItems  int          `json:"totalItems"`
+	ItemsInPage int          `json:"itemsInPage"`
 	PageSize    int          `json:"pageSize"`
 }
 
@@ -46,4 +46,24 @@ type PresignedPostURLRequest struct {
 type PresignedPostURLResponse struct {
 	URL    string            `json:"url"`
 	Fields map[string]string `json:"fields"`
+}
+
+// BucketDetail represents detailed information about an S3 bucket
+type BucketDetail struct {
+	Name         string    `json:"name"`
+	Region       string    `json:"region"`
+	CreationDate time.Time `json:"creationDate"`
+}
+
+// ObjectMetadata represents detailed metadata for an S3 object
+type ObjectMetadata struct {
+	Key                  string            `json:"key"`
+	ContentType          string            `json:"contentType"`
+	ContentLength        int64             `json:"contentLength"`
+	ETag                 string            `json:"etag"`
+	LastModified         time.Time         `json:"lastModified"`
+	StorageClass         string            `json:"storageClass"`
+	UserMetadata         map[string]string `json:"userMetadata,omitempty"`
+	ServerSideEncryption string            `json:"serverSideEncryption,omitempty"`
+	VersionId            string            `json:"versionId,omitempty"`
 }
