@@ -31,14 +31,17 @@ func main() {
 	defer stop()
 
 	// Load AWS configuration
-	awsCfg, err := aws.LoadConfig(ctx, cfg.AWS.Region)
+	awsCfg, err := aws.LoadConfig(ctx, &cfg.AWS)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to load AWS configuration")
 	}
 
+	// Determine if we're using LocalStack
+	isLocal := cfg.AWS.EndpointURL != ""
+
 	// Create S3 client
-	s3Client := aws.NewS3Client(awsCfg)
-	s3Presigner := aws.NewS3Presigner(awsCfg)
+	s3Client := aws.NewS3Client(awsCfg, isLocal)
+	s3Presigner := aws.NewS3Presigner(awsCfg, isLocal)
 
 	// Initialize core service
 	core := core.NewCore(cfg, log, s3Client, s3Presigner)

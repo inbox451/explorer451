@@ -41,6 +41,33 @@ test:
 	go test -v ./...
 
 # ==================================================================================== #
+# DOCKER
+# ==================================================================================== #
+
+# Start compose services
+docker-up:
+	docker compose up -d
+	@echo "Waiting for server to be ready..."
+	@sleep 3
+
+# Stop compose services
+docker-down:
+	docker compose down
+
+# Clean compose volumes
+docker-clean:
+	docker compose down -v
+
+# Run init scrips
+docker-init:
+	@echo "==> Initializing Docker Services..."
+	./.docker/localstack/init-aws.sh
+	@echo "==> LocalStack successfully initialized"
+
+# Reset compose
+docker-reset: docker-clean docker-up docker-init
+
+# ==================================================================================== #
 # TESTING & MOCKING
 # ==================================================================================== #
 
