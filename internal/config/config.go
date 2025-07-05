@@ -29,7 +29,8 @@ type ServerConfig struct {
 
 // AWSConfig holds AWS specific configuration
 type AWSConfig struct {
-	Region string `koanf:"region"`
+	Region      string `koanf:"region"`
+	EndpointURL string `koanf:"endpoint_url"`
 }
 
 // LogConfig holds logging configuration

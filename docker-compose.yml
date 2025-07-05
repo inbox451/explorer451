@@ -6,6 +6,25 @@ x-environment: &shared-environment
   POSTGRES_PORT: ${POSTGRES_PORT:-5432}
 
 services:
+  localstack:
+    image: localstack/localstack:4
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/localstack/init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh
+    networks:
+      - explorer451
+    healthcheck:
+      test: ["CMD", "awslocal", "s3", "ls"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   postgres:
     image: postgres:16-alpine
     environment:

@@ -3,6 +3,7 @@ server:
 
 aws:
   region: "us-east-1"
+  # endpoint_url: "http://localhost:4566" Only used for local development
 
 log:
   level: "info"  # debug, info, warn, error
