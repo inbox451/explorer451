@@ -19,7 +19,7 @@ const route = useRoute()
 const router = nuxtApp.$router
 
 const bucketStore = useBucketStore()
-const { buckets, setSelectedBucketName, setPrefix, refreshBucketObjects } = bucketStore
+const { getBuckets, buckets, setSelectedBucketName, setPrefix, refreshBucketObjects } = bucketStore
 
 const currentBucketName = ref(route.params.bucket as string | null)
 const currentFolderPath = ref('')
@@ -52,12 +52,21 @@ const handleBucketSelect = (bucketName: string) => {
 }
 
 const handleRefresh = () => {
-  refreshBucketObjects()
+  if(currentBucketName.value) {
+    refreshBucketObjects()
+  } else {
+    getBuckets()
+  }
 }
+
+const rootPath = computed(() => {
+  return router.resolve({ name: 'files' }).fullPath
+})
 </script>
 <template>
   <!-- Header -->
   <header class="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <Title>Bucket {{ currentBucketName }} files at {{ currentFolderPath }}</Title>
     <div class="flex h-16 items-center justify-between px-6">
       <div class="flex items-center gap-4">
         <h1 class="text-xl font-semibold">explorer451 <span class="text-2xl">🔥</span></h1>
@@ -80,7 +89,7 @@ const handleRefresh = () => {
         </Select>
       </div>
       <div class="flex items-center gap-2">
-        <Button variant="outline" size="sm" @click="nuxtApp.$router.push('/')">
+        <Button variant="outline" size="sm" @click="nuxtApp.$router.push(rootPath)">
           <Home class="h-4 w-4 mr-2" />
           Home
         </Button>

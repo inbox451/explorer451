@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import {
-  ChevronRight, File, Folder, Upload, Download, Trash2, Search, Grid3X3, List, Plus, MoreHorizontal
+  ChevronRight, File, Folder, Upload, Download, Trash2, Search, Grid3X3, List, Plus, MoreHorizontal,
+  Database
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,6 +12,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogDescription, DialogFooter, 
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useBucketStore } from '@/stores'
+import { Title } from '#components'
 
 definePageMeta({
   name: 'files'
@@ -52,7 +54,7 @@ const itemsToRender = computed(() =>
 <template>
   <div class="min-h-screen flex flex-col bg-background">
     <!-- Main Content -->
-    <main class="flex-1 p-6">
+    <main v-if="selectedBucketName" class="flex-1 p-6">
       <!-- Toolbar -->
       <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-2">
@@ -152,7 +154,7 @@ const itemsToRender = computed(() =>
             :key="item.key"
           >
             <TableCell class="gap-2 min-w-0">
-              <FileLink :item="item" :selectedBucketName="selectedBucketName" class="relative w-full flex items-center">
+              <FileLink :item="item" :selectedBucketName="selectedBucketName" :Title="item.name" class="relative w-full flex items-center">
                 <div class="flex items-center w-full t-0 l-0 b-0 r-0 truncate absolute">
                   <FileIcon :item="item" class="inline" />
                   <span class="ml-2 inline-block overflow-hidden text-ellipsis">{{ item.name }}</span>
@@ -163,7 +165,10 @@ const itemsToRender = computed(() =>
               {{ item.type === 'folder' ? '' : item.formattedSize }}
             </TableCell>
             <TableCell>
-              <NuxtTime v-if="item.type !== 'folder' && item.lastModified" :datetime="item.lastModified" relative />
+              <NuxtTime v-if="item.type !== 'folder' && item.lastModified" 
+                :datetime="item.lastModified" 
+                dateStyle="short"
+                timeStyle="medium" />
             </TableCell>
             <TableCell>
               <DropdownMenu>
@@ -223,10 +228,30 @@ const itemsToRender = computed(() =>
         </CardContent>
       </Card>
     </main>
-    <!-- Footer with Clickable Path -->
-    <footer class="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      
-    </footer>
+    <main v-else class="flex-1 p-6">
+      <h2 class="text-center">Pick a bucket</h2>
+      <p class="text-muted-foreground text-center">
+        Please select a bucket to view its contents.
+      </p>
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+        <Title>Available Buckets</Title>
+        <NuxtLink :to="`/files/${bucket.name}`" v-for="bucket in bucketStore.buckets" :key="bucket.name">
+          <Card
+            class="p-4 hover:shadow-md transition-shadow cursor-pointer"
+          >
+            <CardContent class="flex flex-col items-center gap-2">
+              <div class="p-3 rounded-lg bg-muted">
+                <Database class="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div class="text-center">
+                <p class="text-sm font-medium truncate w-full overflow-hidden text-ellipsis" :title="bucket.name">{{ bucket.name }}</p>
+                <p class="text-xs text-muted-foreground">Bucket</p>
+              </div>
+            </CardContent>
+          </Card>
+        </NuxtLink>
+      </div>
+    </main>
   </div>
 </template>
 
