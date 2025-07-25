@@ -27,7 +27,7 @@ const currentPath = computed(() => {
   return prefix.split('/').filter(Boolean)
 })
 const currentFolder = ref(bucketStore.prefix || '')
-const viewMode = ref<'list' | 'grid'>('list')
+const viewMode = ref(bucketStore.viewMode || 'list')
 const searchQuery = ref('')
 const isUploadDialogOpen = ref(false)
 const isCreateFolderDialogOpen = ref(false)
@@ -49,6 +49,11 @@ const filteredItems = computed(() => {
 const itemsToRender = computed(() =>
   parentFolderItem.value ? [parentFolderItem.value, ...filteredItems.value] : filteredItems.value
 )
+
+const handleViewModeChange = (mode: 'grid' | 'list') => {
+  viewMode.value = mode
+  bucketStore.setViewMode(mode)
+}
 </script>
 
 <template>
@@ -59,7 +64,7 @@ const itemsToRender = computed(() =>
         :viewMode="viewMode"
         :isUploadDialogOpen="isUploadDialogOpen"
         :isCreateFolderDialogOpen="isCreateFolderDialogOpen"
-        @update:viewMode="viewMode = $event"
+        @update:viewMode="handleViewModeChange"
         @closeCreateFolderDialog="isCreateFolderDialogOpen = false"
         @closeUploadDialog="isUploadDialogOpen = false"
       />

@@ -7,6 +7,7 @@ interface State {
   selectedBucketName: string | null
   bucketObjects: BucketObject[]
   prefix?: string
+  viewMode: 'grid' | 'list'
 }
 
 export const getBucketObjectName = (object: BucketObject, prefix?: string): string => {
@@ -62,6 +63,7 @@ export const useBucketStore = defineStore('bucket', {
       selectedBucketName: null,
       bucketObjects: [],
       prefix: currentFolder.value,
+      viewMode: 'list', // Default view mode
     }
   },
 
@@ -121,6 +123,10 @@ export const useBucketStore = defineStore('bucket', {
           this.getBucketObjects()
         }
       }
+    },
+
+    setViewMode(viewMode: 'grid' | 'list') {
+      this.viewMode = viewMode
     },
   },
 
