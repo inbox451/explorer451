@@ -36,7 +36,9 @@
               <template v-if="item.type !== 'folder'">
                 <DropdownMenuItem>
                   <Download class="h-4 w-4 mr-2" />
-                  Download
+                  <FileDownload :item="item" :selectedBucketName="selectedBucketName">
+                    Download
+                  </FileDownload>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <File class="h-4 w-4 mr-2" />
