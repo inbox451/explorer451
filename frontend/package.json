@@ -21,7 +21,7 @@
     "filesize": "^11.0.2",
     "lucide-vue-next": "^0.525.0",
     "nuxt": "^4.0.1",
-    "reka-ui": "^2.3.2",
+    "reka-ui": "^2.4.0",
     "shadcn-nuxt": "2.2.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.11",
@@ -34,8 +34,14 @@
   "devDependencies": {
     "@nuxt/eslint": "1.4.1",
     "eslint": "^9.0.0",
+    "shadcn-vue": "2.2.0",
     "typescript": "^5.8.3",
     "vue-tsc": "^3.0.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "stylus": "https://github.com/stylus/stylus/archive/refs/tags/0.57.0.tar.gz"
+    }
   },
   "packageManager": "pnpm@10.7.0+sha1.66453f13fbf9078d3db193718206a8d738afdbdb"
 }
