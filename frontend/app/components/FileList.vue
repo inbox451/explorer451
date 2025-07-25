@@ -3,9 +3,9 @@
     <TableHeader>
       <TableRow>
         <TableHead class="min-w-0 flex-1">Name</TableHead>
-        <TableHead class="text-right w-[100px]">Size</TableHead>
         <TableHead class="w-[100px]">Modified</TableHead>
-        <TableHead class="w-[100px]">Actions</TableHead>
+        <TableHead class="text-right w-[100px]">Size</TableHead>
+        <TableHead class="w-4"></TableHead>
       </TableRow>
     </TableHeader>
     <TableBody>
@@ -14,15 +14,10 @@
           <ObjectContextMenu :item="item" :selectedBucketName="selectedBucketName">
           <FileLink :item="item" :selectedBucketName="selectedBucketName" :Title="item.name" class="relative w-full flex items-center">
             <div class="flex items-center w-full t-0 l-0 b-0 r-0 truncate absolute">
-              <FileIcon :item="item" class="inline" />
+              <FileIcon :item="item" class="flex-none" />
               <span class="ml-2 inline-block overflow-hidden text-ellipsis">{{ item.name }}</span>
             </div>
           </FileLink>
-          </ObjectContextMenu>
-        </TableCell>
-        <TableCell class="text-right">
-          <ObjectContextMenu :item="item" :selectedBucketName="selectedBucketName">
-            <span>{{ item.type === 'folder' ? '' : item.formattedSize }}</span>
           </ObjectContextMenu>
         </TableCell>
         <TableCell>
@@ -33,10 +28,15 @@
                       timeStyle="medium" />
           </ObjectContextMenu>
         </TableCell>
-        <TableCell>
+        <TableCell class="text-right">
+          <ObjectContextMenu :item="item" :selectedBucketName="selectedBucketName">
+            <span>{{ item.type === 'folder' ? '' : item.formattedSize }}</span>
+          </ObjectContextMenu>
+        </TableCell>
+        <TableCell class="text-right">
           <DropdownMenu>
             <DropdownMenuTrigger>
-              <MoreHorizontal class="h-4 w-4 cursor-pointer" />
+              <MoreVertical class="h-4 w-4 cursor-pointer" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <template v-if="item.type !== 'folder'">
@@ -69,6 +69,6 @@ import FileLink from '@/components/FileLink.vue'
 import FileIcon from '@/components/FileIcon.vue'
 import { NuxtTime } from '#components'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Download, File, Trash2 } from 'lucide-vue-next'
+import { MoreVertical, Download, File, Trash2 } from 'lucide-vue-next'
 const props = defineProps<{ items: any[], selectedBucketName: string }>()
 </script>

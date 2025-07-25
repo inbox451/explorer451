@@ -14,7 +14,7 @@
       <Dialog v-model="isCreateFolderDialogOpen">
         <DialogTrigger>
           <Button variant="outline" size="sm">
-            <Plus class="h-4 w-4 mr-2" />
+            <FolderPlus class="h-4 w-4 mr-2" />
             New Folder
           </Button>
         </DialogTrigger>
@@ -72,7 +72,7 @@
           @click="$emit('update:viewMode', 'grid')"
           class="rounded-l-none"
         >
-          <Grid3X3 class="h-4 w-4" />
+          <LayoutGrid class="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -84,7 +84,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogTrigger, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Search, Plus, Upload, List, Grid3X3 } from 'lucide-vue-next'
+import { Search, FolderPlus, Upload, List, LayoutGrid } from 'lucide-vue-next'
 const props = defineProps<{ searchQuery: string, viewMode: string, isUploadDialogOpen: boolean, isCreateFolderDialogOpen: boolean }>()
 const emit = defineEmits(['update:viewMode'])
 

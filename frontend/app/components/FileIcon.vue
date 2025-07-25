@@ -1,17 +1,18 @@
 <script lang="ts" setup>
 import type { BucketObject } from '~/types';
 import {
-  File, Folder, FileText, ImageIcon, Video, Music, Archive,
+  File, Folder, FolderOutput, FileText, ImageIcon, Video, Music, Archive,
 } from 'lucide-vue-next'
 const props = defineProps<{
   item: BucketObject,
   size?: string,
 }>()
 
+
 const fileIcon = computed(() => {
-  if (props.item.type === 'folder') return Folder
+  const { type, name } = props.item
+  if (type === 'folder') return (name == '..' ? FolderOutput : Folder)
   switch (props.item.contentType) {
-    case 'folder': return Folder
     case 'image':
     case 'image/gif':
     case 'image/jpeg':
