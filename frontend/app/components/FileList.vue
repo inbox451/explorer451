@@ -11,21 +11,27 @@
     <TableBody>
       <TableRow v-for="item in items" :key="item.key">
         <TableCell class="gap-2 min-w-0">
+          <ObjectContextMenu :item="item" :selectedBucketName="selectedBucketName">
           <FileLink :item="item" :selectedBucketName="selectedBucketName" :Title="item.name" class="relative w-full flex items-center">
             <div class="flex items-center w-full t-0 l-0 b-0 r-0 truncate absolute">
               <FileIcon :item="item" class="inline" />
               <span class="ml-2 inline-block overflow-hidden text-ellipsis">{{ item.name }}</span>
             </div>
           </FileLink>
+          </ObjectContextMenu>
         </TableCell>
         <TableCell class="text-right">
-          {{ item.type === 'folder' ? '' : item.formattedSize }}
+          <ObjectContextMenu :item="item" :selectedBucketName="selectedBucketName">
+            <span>{{ item.type === 'folder' ? '' : item.formattedSize }}</span>
+          </ObjectContextMenu>
         </TableCell>
         <TableCell>
-          <NuxtTime v-if="item.type !== 'folder' && item.lastModified" 
-            :datetime="item.lastModified" 
-            dateStyle="short"
-            timeStyle="medium" />
+          <ObjectContextMenu :item="item" :selectedBucketName="selectedBucketName">
+            <NuxtTime v-if="item.type !== 'folder' && item.lastModified" 
+                      :datetime="item.lastModified" 
+                      dateStyle="short"
+                      timeStyle="medium" />
+          </ObjectContextMenu>
         </TableCell>
         <TableCell>
           <DropdownMenu>
@@ -35,8 +41,8 @@
             <DropdownMenuContent align="end">
               <template v-if="item.type !== 'folder'">
                 <DropdownMenuItem>
-                  <Download class="h-4 w-4 mr-2" />
                   <FileDownload :item="item" :selectedBucketName="selectedBucketName">
+                    <Download class="h-4 w-4 mr-2" />
                     Download
                   </FileDownload>
                 </DropdownMenuItem>
