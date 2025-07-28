@@ -2,7 +2,6 @@
 import { ref, watch } from 'vue'
 import { LogOut, RefreshCw, Home } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -12,14 +11,14 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { useBucketStore } from '@/stores'
+import { useFileStore } from '@/stores'
 
 const nuxtApp = useNuxtApp()
 const route = useRoute()
 const router = nuxtApp.$router
 
-const bucketStore = useBucketStore()
-const { getBuckets, buckets, setSelectedBucketName, setPrefix, refreshBucketObjects } = bucketStore
+const fileStore = useFileStore()
+const { getBuckets, buckets, setSelectedBucketName, setPrefix, refreshBucketObjects } = fileStore
 
 const currentBucketName = ref(route.params.bucket as string | null)
 const currentFolderPath = ref('')

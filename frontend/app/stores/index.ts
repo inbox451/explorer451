@@ -8,6 +8,11 @@ interface State {
   bucketObjects: BucketObject[]
   prefix?: string
   viewMode: 'grid' | 'list'
+  isLoadingBuckets: boolean
+  isLoadingBucketObjects: boolean
+  bucketsError: string | null
+  bucketObjectsError: string | null
+  invalidBucket: boolean
 }
 
 export const getBucketObjectName = (object: BucketObject, prefix?: string): string => {
@@ -31,7 +36,7 @@ export const getBucketObjectName = (object: BucketObject, prefix?: string): stri
   return name.replace(/\/$/, '') // Remove trailing slash if exists
 }
 
-const getBucketObjects = async ({ bucketName, prefix }: { bucketName: string | null; prefix?: string }) => {
+const loadBucketObjects = async ({ bucketName, prefix }: { bucketName: string | null; prefix?: string }) => {
   if (!bucketName) {
     return [] // Return empty array if no bucket is selected
   }
@@ -52,90 +57,146 @@ const getBucketObjects = async ({ bucketName, prefix }: { bucketName: string | n
   }
 }
 
-export const useBucketStore = defineStore('bucket', {
-  state: (): State => {
-    const route = useRoute();
-    const routerFolder = route.params.folder as string[] | null
-    const currentFolder = ref(routerFolder ? routerFolder.join('/') : '')
+export const useFileStore = defineStore('file', () => {
+  const buckets = ref([] as Bucket[])
+  const selectedBucketName = ref(null as string | null)
+  const bucketObjects = ref([] as BucketObject[])
+  const prefix = ref(undefined as string | undefined)
+  const viewMode = ref('list' as 'grid' | 'list')
+  const isLoadingBuckets = ref(false)
+  const isLoadingBucketObjects = ref(false)
+  const bucketsError = ref(null as string | null)
+  const bucketObjectsError = ref(null as string | null)
+  const invalidBucket = ref(false)
 
-    return {
-      buckets: [],
-      selectedBucketName: null,
-      bucketObjects: [],
-      prefix: currentFolder.value,
-      viewMode: 'list', // Default view mode
+  // state: (): State => {
+  //   const route = useRoute();
+  //   const routerFolder = route.params.folder as string[] | null
+  //   const currentFolder = ref(routerFolder ? routerFolder.join('/') : '')
+
+  //   return {
+  //     buckets: [],
+  //     selectedBucketName: null,
+  //     bucketObjects: [],
+  //     prefix: currentFolder.value,
+  //     viewMode: 'list', // Default view mode
+  //     isLoadingBuckets: false,
+  //     isLoadingBucketObjects: false,
+  //     bucketsError: null,
+  //     bucketObjectsError: null,
+  //     invalidBucket: false,
+  //   }
+  // },
+
+  async function getBuckets() {
+    isLoadingBuckets.value = true
+    bucketsError.value = null
+    const api = useNuxtApp().$api
+    try {
+      const response = await api.getBuckets()
+      setBuckets(response)
+      invalidBucket.value = false
+    } catch (error: any) {
+      bucketsError.value = error?.message || 'Error fetching buckets'
+      invalidBucket.value = true
+      console.error('Error fetching buckets:', error)
+    } finally {
+      isLoadingBuckets.value = false
     }
-  },
+  }
 
-  actions: {
-    async getBuckets() {
-      const api = useNuxtApp().$api
-      try {
-        const response = await api.getBuckets()
-        this.setBuckets(response)
-      } catch (error) {
-        console.error('Error fetching buckets:', error)
-      }
-    },
-
-    async getBucketObjects() {
-      const { selectedBucketName, prefix } = this
-      const objects = await getBucketObjects({ 
-        bucketName: selectedBucketName, 
-        prefix
+  async function getBucketObjects() {
+    isLoadingBucketObjects.value = true
+    bucketObjectsError.value = null
+    try {
+      const objects = await loadBucketObjects({
+        bucketName: selectedBucketName.value,
+        prefix: prefix.value
       })
-      this.setBucketObjects(objects)
-    },
+      setBucketObjects(objects)
+    } catch (error: any) {
+      bucketObjectsError.value = error?.message || 'Error fetching bucket objects'
+      console.error('Error fetching bucket objects:', error)
+    } finally {
+      isLoadingBucketObjects.value = false
+    }
+  }
 
-    async refreshBucketObjects() {
-      const { selectedBucketName, prefix } = this
-      if (selectedBucketName) {
-        const objects = await getBucketObjects({ 
-          bucketName: selectedBucketName, 
-          prefix
+  async function refreshBucketObjects() {
+    if (selectedBucketName.value) {
+      isLoadingBucketObjects.value = true
+      bucketObjectsError.value = null
+      try {
+        const objects = await loadBucketObjects({
+          bucketName: selectedBucketName.value,
+          prefix: prefix.value
         })
-        this.setBucketObjects(objects)
+        setBucketObjects(objects)
+      } catch (error: any) {
+        bucketObjectsError.value = error?.message || 'Error refreshing bucket objects'
+        console.error('Error refreshing bucket objects:', error)
+      } finally {
+        isLoadingBucketObjects.value = false
       }
-    },
+    }
+  }
 
-    setBuckets(buckets: Bucket[]) {
-      this.buckets = buckets
-    },
+  function setBuckets(newBuckets: Bucket[]) {
+    buckets.value = newBuckets
+  }
 
-    setSelectedBucketName(bucketName: string | null) {
-      console.log('Setting selected bucket name:', bucketName, this.selectedBucketName)
-      if (bucketName !== this.selectedBucketName) {
-        this.prefix = undefined // Reset prefix when changing bucket
-        this.selectedBucketName = bucketName
-        console.log('Fetching bucket objects for:', bucketName)
-        this.getBucketObjects()
+  function setSelectedBucketName(bucketName: string | null) {
+    console.log('Setting selected bucket name:', bucketName, selectedBucketName.value)
+    if (bucketName !== selectedBucketName.value) {
+      prefix.value = undefined // Reset prefix when changing bucket
+      selectedBucketName.value = bucketName
+      // Check if bucket is valid
+      invalidBucket.value = !buckets.value.some(b => b.name === bucketName)
+      console.log('Fetching bucket objects for:', bucketName)
+      getBucketObjects()
+    }
+  }
+
+  function setBucketObjects(newBucketObjects: BucketObject[]) {
+    bucketObjects.value = newBucketObjects
+  }
+
+  function setPrefix(newPrefix: string | undefined) {
+    if (newPrefix !== prefix.value) {
+      prefix.value = newPrefix
+      if (selectedBucketName.value) {
+        getBucketObjects()
       }
-    },
+    }
+  }
 
-    setBucketObjects(bucketObjects: BucketObject[]) {
-      this.bucketObjects = bucketObjects
-    },
+  function setViewMode(newViewMode: 'grid' | 'list') {
+    viewMode.value = newViewMode
+  }
 
-    setPrefix(prefix: string | undefined) {
-      if (prefix !== this.prefix) {
-        this.prefix = prefix
-        if (this.selectedBucketName) {
-          this.getBucketObjects()
-        }
-      }
-    },
+  function getBucketObjectsIncludingText(text: string) {
+    return bucketObjects.value.filter(object => object?.name?.includes(text))
+  }
 
-    setViewMode(viewMode: 'grid' | 'list') {
-      this.viewMode = viewMode
-    },
-  },
-
-  getters: {
-    bucketByName: (state: State) => (name: string) => {
-      return state.buckets.find(bucket => bucket.name === name) || null
-    },
-    getBucketObjectsIncludingText: (state: State) =>
-      (text: string) => state.bucketObjects.filter(object => object?.name?.includes(text)),
-  
-  }    
+  return {
+    buckets,
+    selectedBucketName,
+    bucketObjects,
+    prefix,
+    viewMode,
+    isLoadingBuckets,
+    isLoadingBucketObjects,
+    bucketsError,
+    bucketObjectsError,
+    invalidBucket,
+    getBuckets,
+    getBucketObjects,
+    refreshBucketObjects,
+    setBuckets,
+    setSelectedBucketName,
+    setBucketObjects,
+    setPrefix,
+    setViewMode,
+    getBucketObjectsIncludingText
+  }
 });

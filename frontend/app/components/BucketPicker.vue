@@ -6,7 +6,7 @@
     </p>
     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
       <Title>Available Buckets</Title>
-      <NuxtLink :to="`/files/${bucket.name}`" v-for="bucket in bucketStore.buckets" :key="bucket.name">
+      <NuxtLink :to="`/files/${bucket.name}`" v-for="bucket in fileStore.buckets" :key="bucket.name">
         <Card class="p-4 hover:shadow-md transition-shadow cursor-pointer">
           <CardContent class="flex flex-col items-center gap-2">
             <div class="p-3 rounded-lg bg-muted">
@@ -26,6 +26,6 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Database } from 'lucide-vue-next'
 import { Title } from '#components'
-import { useBucketStore } from '@/stores'
-const bucketStore = useBucketStore()
+import { useFileStore } from '@/stores'
+const fileStore = useFileStore()
 </script>
