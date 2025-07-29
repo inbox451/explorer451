@@ -30,9 +30,17 @@ const props = defineProps<{
           <File class="h-4 w-4 mr-2" />
           Copy URL
         </ContextMenuItem>
-        <ContextMenuSeparator />
       </template>
-      <ContextMenuItem class="text-destructive">
+      <template v-else>
+        <ContextMenuItem>
+          <FileLink :item="item" :selectedBucketName="selectedBucketName" class="flex items-center">
+            <FileIcon :item="item" class="h-4 w-4 mr-2" />
+            Open Folder
+          </FileLink>
+        </ContextMenuItem>
+      </template>
+      <ContextMenuSeparator />
+      <ContextMenuItem class="text-destructive" v-if="item.key">
         <Trash2 class="h-4 w-4 mr-2" />
         Delete
       </ContextMenuItem>
