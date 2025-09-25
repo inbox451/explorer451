@@ -13,6 +13,9 @@ import (
 	"explorer451/internal/config"
 	"explorer451/internal/core"
 	"explorer451/internal/logger"
+
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -43,11 +46,38 @@ func main() {
 	s3Client := aws.NewS3Client(awsCfg, isLocal)
 	s3Presigner := aws.NewS3Presigner(awsCfg, isLocal)
 
+	// Initialize database connection (optional)
+	var db *sqlx.DB
+	if cfg.Database.URL != "" {
+		log.Info().Msg("Initializing database connection")
+		db, err = sqlx.Connect("postgres", cfg.Database.URL)
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to connect to database, continuing without authentication")
+		} else {
+			// Configure database connection pool
+			db.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+			db.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+			db.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
+
+			// Test the connection
+			if err := db.Ping(); err != nil {
+				log.Warn().Err(err).Msg("Database ping failed, continuing without authentication")
+				db.Close()
+				db = nil
+			} else {
+				log.Info().Msg("Database connection established")
+			}
+		}
+	}
+
 	// Initialize core service
-	core := core.NewCore(cfg, log, s3Client, s3Presigner)
+	core := core.NewCore(cfg, log, s3Client, s3Presigner, db)
 
 	// Setup and start HTTP server
-	server := api.NewServer(core)
+	server, err := api.NewServer(core)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create server")
+	}
 	go func() {
 		if err := server.Start(cfg.Server.Address); err != nil {
 			log.Error().Err(err).Msg("Server error")

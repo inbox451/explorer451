@@ -2,26 +2,57 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
+	"explorer451/internal/auth"
 	"explorer451/internal/core"
+	"explorer451/internal/models"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
+
+// CustomValidator is a custom validator for Echo
+type CustomValidator struct {
+	validator *validator.Validate
+}
+
+// Validate validates the struct
+func (cv *CustomValidator) Validate(i interface{}) error {
+	return cv.validator.Struct(i)
+}
 
 // Server represents the HTTP server
 type Server struct {
 	echo *echo.Echo
 	core *core.Core
+	auth *auth.Auth
 }
 
 // NewServer creates a new HTTP server
-func NewServer(core *core.Core) *Server {
+func NewServer(core *core.Core) (*Server, error) {
 	s := &Server{
 		echo: echo.New(),
 		core: core,
+	}
+
+	// Initialize authentication if database is available
+	if core.DB != nil {
+		callbacks := &auth.Callbacks{
+			GetUser: func(id string) (*models.User, error) {
+				ctx := context.Background()
+				return core.Repository.GetUser(ctx, id)
+			},
+		}
+
+		authSystem, err := auth.New(context.Background(), core.Repository, *core.Config, core.DB.DB, callbacks, core.Logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize authentication: %w", err)
+		}
+		s.auth = authSystem
 	}
 
 	// Configure middleware
@@ -33,10 +64,13 @@ func NewServer(core *core.Core) *Server {
 		Timeout: 30 * time.Second,
 	}))
 
+	// Setup validator
+	s.echo.Validator = &CustomValidator{validator: validator.New()}
+
 	// Setup routes
 	s.setupRoutes()
 
-	return s
+	return s, nil
 }
 
 // Start starts the HTTP server
@@ -59,13 +93,34 @@ func (s *Server) setupRoutes() {
 	// API endpoints
 	api := s.echo.Group("/api")
 
-	// Bucket endpoints
-	api.GET("/buckets", s.listBuckets)
-	api.GET("/buckets/:bucket/details", s.getBucketDetails)
-	api.GET("/buckets/:bucket/objects", s.listObjects)
-	api.GET("/buckets/:bucket/objects/*", s.getPresignedURL)
-	api.HEAD("/buckets/:bucket/objects/*", s.getObjectMetadata)
-	api.DELETE("/buckets/:bucket/objects/*", s.deleteObject)
-	api.POST("/buckets/:bucket/objects", s.createFolder)
-	api.POST("/buckets/:bucket/presigned-post-url", s.generatePresignedPostURL)
+	// Authentication routes (if auth is available)
+	if s.auth != nil {
+		auth := api.Group("/auth")
+		auth.POST("/login", s.auth.Login)
+		auth.POST("/logout", s.auth.LogoutHandler)
+		auth.GET("/profile", s.auth.Profile, s.auth.Middleware)
+		auth.GET("/oidc/login", s.auth.OIDCLogin)
+		auth.GET("/oidc/callback", s.auth.OIDCCallback)
+
+		// Protected API endpoints (require authentication)
+		protected := api.Group("", s.auth.Middleware)
+		protected.GET("/buckets", s.listBuckets)
+		protected.GET("/buckets/:bucket/details", s.getBucketDetails)
+		protected.GET("/buckets/:bucket/objects", s.listObjects)
+		protected.GET("/buckets/:bucket/objects/*", s.getPresignedURL)
+		protected.HEAD("/buckets/:bucket/objects/*", s.getObjectMetadata)
+		protected.DELETE("/buckets/:bucket/objects/*", s.deleteObject)
+		protected.POST("/buckets/:bucket/objects", s.createFolder)
+		protected.POST("/buckets/:bucket/presigned-post-url", s.generatePresignedPostURL)
+	} else {
+		// Fallback: unprotected routes if no auth system
+		api.GET("/buckets", s.listBuckets)
+		api.GET("/buckets/:bucket/details", s.getBucketDetails)
+		api.GET("/buckets/:bucket/objects", s.listObjects)
+		api.GET("/buckets/:bucket/objects/*", s.getPresignedURL)
+		api.HEAD("/buckets/:bucket/objects/*", s.getObjectMetadata)
+		api.DELETE("/buckets/:bucket/objects/*", s.deleteObject)
+		api.POST("/buckets/:bucket/objects", s.createFolder)
+		api.POST("/buckets/:bucket/presigned-post-url", s.generatePresignedPostURL)
+	}
 }

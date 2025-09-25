@@ -64,6 +64,12 @@ docker-init:
 	./.docker/localstack/init-aws.sh
 	@echo "==> LocalStack successfully initialized"
 
+# Run database migrations
+migrate:
+	@echo "==> Running database migrations..."
+	docker compose exec postgres psql -U explorer451 -d explorer451 -c "$$(cat migrations/001_create_auth_tables.sql)"
+	@echo "==> Migrations completed successfully"
+
 # Reset compose
 docker-reset: docker-clean docker-up docker-init
 
