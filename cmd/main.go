@@ -16,9 +16,20 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/spf13/pflag"
+)
+
+var (
+	installFlag    = pflag.Bool("install", false, "Initialize the database schema")
+	upgradeFlag    = pflag.Bool("upgrade", false, "Upgrade the database schema")
+	yesFlag        = pflag.Bool("yes", false, "Skip confirmation prompts")
+	idempotentFlag = pflag.Bool("idempotent", false, "Allow idempotent installs")
 )
 
 func main() {
+	// Parse command line flags
+	pflag.Parse()
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -46,12 +57,15 @@ func main() {
 	s3Client := aws.NewS3Client(awsCfg, isLocal)
 	s3Presigner := aws.NewS3Presigner(awsCfg, isLocal)
 
-	// Initialize database connection (optional)
+	// Initialize database connection (required for install/upgrade commands)
 	var db *sqlx.DB
 	if cfg.Database.URL != "" {
 		log.Info().Msg("Initializing database connection")
 		db, err = sqlx.Connect("postgres", cfg.Database.URL)
 		if err != nil {
+			if *installFlag || *upgradeFlag {
+				log.Fatal().Err(err).Msg("Failed to connect to database for install/upgrade")
+			}
 			log.Warn().Err(err).Msg("Failed to connect to database, continuing without authentication")
 		} else {
 			// Configure database connection pool
@@ -61,6 +75,9 @@ func main() {
 
 			// Test the connection
 			if err := db.Ping(); err != nil {
+				if *installFlag || *upgradeFlag {
+					log.Fatal().Err(err).Msg("Database ping failed for install/upgrade")
+				}
 				log.Warn().Err(err).Msg("Database ping failed, continuing without authentication")
 				db.Close()
 				db = nil
@@ -68,6 +85,32 @@ func main() {
 				log.Info().Msg("Database connection established")
 			}
 		}
+	} else if *installFlag || *upgradeFlag {
+		log.Fatal().Msg("Database URL is required for install/upgrade commands")
+	}
+
+	// Handle install command
+	if *installFlag {
+		if db == nil {
+			log.Fatal().Msg("Database connection is required for install")
+		}
+		install(db, cfg, !*yesFlag, *idempotentFlag)
+		os.Exit(0)
+	}
+
+	// Handle upgrade command
+	if *upgradeFlag {
+		if db == nil {
+			log.Fatal().Msg("Database connection is required for upgrade")
+		}
+		upgrade(db, cfg, !*yesFlag)
+		os.Exit(0)
+	}
+
+	// Check if the DB schema is installed (only if database is available)
+	if db != nil {
+		checkInstall(db)
+		checkUpgrade(db)
 	}
 
 	// Initialize core service
