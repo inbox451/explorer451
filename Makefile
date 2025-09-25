@@ -64,7 +64,7 @@ docker-init:
 	./.docker/localstack/init-aws.sh
 	@echo "==> LocalStack successfully initialized"
 
-# Install database schema (robust migration system)
+# Install database schema
 install:
 	@echo "==> Installing database schema..."
 	go run cmd/*.go --install --yes
@@ -75,12 +75,6 @@ upgrade:
 	@echo "==> Upgrading database schema..."
 	go run cmd/*.go --upgrade --yes
 	@echo "==> Database schema upgraded successfully"
-
-# Run database migrations (legacy - use install/upgrade instead)
-migrate:
-	@echo "==> Running legacy database migrations..."
-	docker compose exec postgres psql -U explorer451 -d explorer451 -c "$$(cat migrations/001_create_auth_tables.sql)"
-	@echo "==> Migrations completed successfully"
 
 # Reset compose
 docker-reset: docker-clean docker-up docker-init
