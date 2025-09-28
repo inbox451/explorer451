@@ -118,6 +118,7 @@ func main() {
 
 	// Setup and start HTTP server
 	server, err := api.NewServer(core)
+	log.Info().Msg("Starting server... at " + cfg.Server.Address)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create server")
 	}

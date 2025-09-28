@@ -34,8 +34,12 @@ type Server struct {
 
 // NewServer creates a new HTTP server
 func NewServer(core *core.Core) (*Server, error) {
+	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = true
+
 	s := &Server{
-		echo: echo.New(),
+		echo: e,
 		core: core,
 	}
 
@@ -75,6 +79,7 @@ func NewServer(core *core.Core) (*Server, error) {
 
 // Start starts the HTTP server
 func (s *Server) Start(address string) error {
+	// Start server
 	return s.echo.Start(address)
 }
 
