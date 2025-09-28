@@ -1,0 +1,26 @@
+issuer: http://localhost:5556/dex
+
+storage:
+  type: memory
+
+enablePasswordDB: true
+
+web:
+  http: 0.0.0.0:5556
+
+telemetry:
+  http: 0.0.0.0:5557
+
+staticClients:
+  - id: dex
+    redirectURIs:
+      - 'http://localhost:8080/callback'
+      - 'http://localhost:8080/api/auth/oidc/callback'
+    name: 'My Test App'
+    secret: dex-secret
+
+staticPasswords:
+  - email: "user@example.com"
+    hash: "$2a$12$NA7Z4wb9mNc8YGVTJpDm4uWFZfxWRGxEOnO8gq6JcgZ18Qg6YJWVm"
+    username: "user"
+    userID: "1234"

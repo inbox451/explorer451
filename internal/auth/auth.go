@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -66,9 +67,14 @@ func initOIDC(a *Auth) {
 	a.log.Info().Msgf("Initializing OIDC provider: %s", a.oidcCfg.ProviderURL)
 	provider, err := oidc.NewProvider(ctxOIDC, a.oidcCfg.ProviderURL)
 	if err != nil {
-		a.oidcCfg.Enabled = false
-		a.log.Error().Err(err).Msg("Error initializing OIDC provider, disabling OIDC")
-		return
+		// TODO: Consider with João whether to disable OIDC on error or exit
+		// For now, we exit to avoid running in a broken state
+		// a.oidcCfg.Enabled = false
+		// a.log.Error().Err(err).Msg("Error initializing OIDC provider, disabling OIDC")
+		// return
+		a.log.Error().Err(err).Msg("Error initializing OIDC provider. Exiting.")
+		os.Exit(1)
+
 	}
 	a.provider = provider
 	a.oauthCfg = oauth2.Config{

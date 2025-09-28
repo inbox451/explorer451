@@ -44,6 +44,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   pgadmin:
     image: dpage/pgadmin4:latest
     environment:
@@ -63,6 +64,18 @@ services:
     restart: unless-stopped
     depends_on:
       - postgres
+
+  dex:
+    image: ghcr.io/dexidp/dex:latest
+    volumes:
+      - .docker/dex/dex-config.yaml:/etc/dex/config.yaml
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+    networks:
+      - explorer451
+    ports:
+      - "5556:5556"
+      - "5557:5557"
+
 
 networks:
   explorer451:
