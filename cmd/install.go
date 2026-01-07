@@ -10,6 +10,7 @@ import (
 	"explorer451/internal/models"
 
 	"github.com/aarondl/null/v9"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -132,7 +133,7 @@ func createDefaultAdminUserIfNeeded(db *sqlx.DB, logger *log.Logger) error {
 		}
 
 		adminUser := &models.User{
-			Base:          models.Base{ID: "admin-user-id"},
+			Base:          models.Base{ID: uuid.New().String()},
 			Name:          "Administrator",
 			Username:      "admin",
 			Email:         "admin@explorer451.dev",

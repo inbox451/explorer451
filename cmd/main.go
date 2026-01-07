@@ -66,7 +66,7 @@ func main() {
 			if *installFlag || *upgradeFlag {
 				log.Fatal().Err(err).Msg("Failed to connect to database for install/upgrade")
 			}
-			log.Warn().Err(err).Msg("Failed to connect to database, continuing without authentication")
+			log.Fatal().Err(err).Msg("Failed to connect to database.")
 		} else {
 			// Configure database connection pool
 			db.SetMaxOpenConns(cfg.Database.MaxOpenConns)
@@ -78,7 +78,7 @@ func main() {
 				if *installFlag || *upgradeFlag {
 					log.Fatal().Err(err).Msg("Database ping failed for install/upgrade")
 				}
-				log.Warn().Err(err).Msg("Database ping failed, continuing without authentication")
+				log.Fatal().Err(err).Msg("Database ping failed.")
 				db.Close()
 				db = nil
 			} else {
