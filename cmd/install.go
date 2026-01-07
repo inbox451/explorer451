@@ -93,7 +93,7 @@ func checkInstall(db *sqlx.DB) {
 }
 
 func recordMigrationVersion(version string, db *sqlx.DB) error {
-	_, err := db.Exec(fmt.Sprintf(`INSERT INTO schema_migrations (version) VALUES('%s')`, version))
+	_, err := db.Exec(`INSERT INTO schema_migrations (version) VALUES($1)`, version)
 	return err
 }
 

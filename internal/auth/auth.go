@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -67,14 +66,10 @@ func initOIDC(a *Auth) {
 	a.log.Info().Msgf("Initializing OIDC provider: %s", a.oidcCfg.ProviderURL)
 	provider, err := oidc.NewProvider(ctxOIDC, a.oidcCfg.ProviderURL)
 	if err != nil {
-		// TODO: Consider with João whether to disable OIDC on error or exit
-		// For now, we exit to avoid running in a broken state
-		// a.oidcCfg.Enabled = false
-		// a.log.Error().Err(err).Msg("Error initializing OIDC provider, disabling OIDC")
-		// return
-		a.log.Error().Err(err).Msg("Error initializing OIDC provider. Exiting.")
-		os.Exit(1)
-
+		// Gracefully disable OIDC on initialization error instead of crashing the service
+		a.oidcCfg.Enabled = false
+		a.log.Error().Err(err).Msg("Error initializing OIDC provider, OIDC authentication disabled")
+		return
 	}
 	a.provider = provider
 	a.oauthCfg = oauth2.Config{
@@ -152,16 +147,13 @@ func New(ctx context.Context, repository storage.Repository, cfg config.Config, 
 	}
 	a.sessStore = st
 
-	// TODO: Add session store options to config
-	// Most of the session options are set in the config file
-	// Once everything is working, we should move them to the config file, and probably refactor the entire auth conf
 	a.sess = simplesessions.New(simplesessions.Options{
 		EnableAutoCreate: false,
 		SessionIDLength:  64,
 		Cookie: simplesessions.CookieOptions{
 			Name:       "explorer451_session",
 			IsHTTPOnly: true,
-			IsSecure:   false, // Set true if using HTTPS
+			IsSecure:   cfg.Server.SecureCookies, // Use config to set secure cookies for HTTPS deployments
 			MaxAge:     time.Hour * 24 * 7,
 			SameSite:   http.SameSiteLaxMode,
 			Path:       "/",

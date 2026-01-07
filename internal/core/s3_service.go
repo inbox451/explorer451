@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"path/filepath"
@@ -225,7 +226,7 @@ func (s *S3Service) PutObject(ctx context.Context, bucket, key string, body io.R
 	input := &s3.PutObjectInput{
 		Bucket:      aws.String(bucket),
 		Key:         aws.String(key),
-		Body:        strings.NewReader(string(bodyBytes)), // Use a seekable reader
+		Body:        bytes.NewReader(bodyBytes), // Use a seekable reader without extra memory allocation
 		ContentType: aws.String(contentType),
 	}
 

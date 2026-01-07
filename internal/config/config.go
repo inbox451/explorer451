@@ -44,7 +44,8 @@ type Config struct {
 
 // ServerConfig holds HTTP server configuration
 type ServerConfig struct {
-	Address string `koanf:"address"`
+	Address       string `koanf:"address"`
+	SecureCookies bool   `koanf:"secure_cookies"` // Set to true when using HTTPS
 }
 
 // AWSConfig holds AWS specific configuration
