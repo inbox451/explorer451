@@ -3,8 +3,10 @@ package core
 import (
 	"explorer451/internal/config"
 	"explorer451/internal/logger"
+	"explorer451/internal/storage"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/jmoiron/sqlx"
 )
 
 // Core holds the application's core components and services
@@ -14,6 +16,8 @@ type Core struct {
 	S3Client    *s3.Client
 	S3Presigner *s3.PresignClient
 	S3Service   *S3Service
+	DB          *sqlx.DB
+	Repository  storage.Repository
 }
 
 // NewCore creates a new Core instance with all dependencies
@@ -22,13 +26,18 @@ func NewCore(
 	logger *logger.Logger,
 	s3Client *s3.Client,
 	s3Presigner *s3.PresignClient,
+	db *sqlx.DB,
 ) *Core {
 	core := &Core{
 		Config:      cfg,
 		Logger:      logger,
 		S3Client:    s3Client,
 		S3Presigner: s3Presigner,
+		DB:          db,
 	}
+
+	// Initialize repository
+	core.Repository = storage.NewRepository(db)
 
 	// Initialize services
 	core.S3Service = NewS3Service(core)

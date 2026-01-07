@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env"
@@ -15,16 +16,36 @@ const (
 	EnvPrefix = "EXPLORER451_"
 )
 
+// DatabaseConfig holds database configuration
+type DatabaseConfig struct {
+	URL             string        `koanf:"url"`
+	MaxOpenConns    int           `koanf:"max_open_conns"`
+	MaxIdleConns    int           `koanf:"max_idle_conns"`
+	ConnMaxLifetime time.Duration `koanf:"conn_max_lifetime"`
+}
+
+// OIDCConfig holds OpenID Connect / OAuth2 settings
+type OIDCConfig struct {
+	Enabled      bool   `koanf:"enabled"`
+	ProviderURL  string `koanf:"provider_url"`
+	RedirectURL  string `koanf:"redirect_url"`
+	ClientID     string `koanf:"client_id"`
+	ClientSecret string `koanf:"client_secret"`
+}
+
 // Config holds all application configuration
 type Config struct {
-	Server ServerConfig `koanf:"server"`
-	AWS    AWSConfig    `koanf:"aws"`
-	Log    LogConfig    `koanf:"log"`
+	Server   ServerConfig   `koanf:"server"`
+	AWS      AWSConfig      `koanf:"aws"`
+	Log      LogConfig      `koanf:"log"`
+	Database DatabaseConfig `koanf:"database"`
+	OIDC     OIDCConfig     `koanf:"oidc"`
 }
 
 // ServerConfig holds HTTP server configuration
 type ServerConfig struct {
-	Address string `koanf:"address"`
+	Address       string `koanf:"address"`
+	SecureCookies bool   `koanf:"secure_cookies"` // Set to true when using HTTPS
 }
 
 // AWSConfig holds AWS specific configuration
@@ -87,5 +108,17 @@ func applyDefaults(cfg *Config) {
 
 	if cfg.Log.Format == "" {
 		cfg.Log.Format = "json"
+	}
+
+	if cfg.Database.MaxOpenConns == 0 {
+		cfg.Database.MaxOpenConns = 25
+	}
+
+	if cfg.Database.MaxIdleConns == 0 {
+		cfg.Database.MaxIdleConns = 5
+	}
+
+	if cfg.Database.ConnMaxLifetime == 0 {
+		cfg.Database.ConnMaxLifetime = 5 * time.Minute
 	}
 }

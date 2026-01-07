@@ -64,6 +64,18 @@ docker-init:
 	./.docker/localstack/init-aws.sh
 	@echo "==> LocalStack successfully initialized"
 
+# Install database schema
+install:
+	@echo "==> Installing database schema..."
+	go run cmd/*.go --install --yes
+	@echo "==> Database schema installed successfully"
+
+# Upgrade database schema
+upgrade:
+	@echo "==> Upgrading database schema..."
+	go run cmd/*.go --upgrade --yes
+	@echo "==> Database schema upgraded successfully"
+
 # Reset compose
 docker-reset: docker-clean docker-up docker-init
 

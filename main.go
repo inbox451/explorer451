@@ -41,7 +41,7 @@ func NewS3Handler() (*S3Handler, error) {
 	awsRegion := os.Getenv("AWS_REGION")
 	if awsRegion == "" {
 		awsRegion = "eu-central-1"
-		fmt.Printf("Defaulting ro AWS Region %s\n", awsRegion)
+		fmt.Printf("Defaulting to AWS Region %s\n", awsRegion)
 	}
 
 	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(awsRegion))

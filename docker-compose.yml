@@ -44,8 +44,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   pgadmin:
-    container_name: pgadmin
     image: dpage/pgadmin4:latest
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-explorer451@explorer451.dev}
@@ -64,6 +64,18 @@ services:
     restart: unless-stopped
     depends_on:
       - postgres
+
+  dex:
+    image: ghcr.io/dexidp/dex:latest
+    volumes:
+      - .docker/dex/dex-config.yaml:/etc/dex/config.yaml
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+    networks:
+      - explorer451
+    ports:
+      - "5556:5556"
+      - "5557:5557"
+
 
 networks:
   explorer451:

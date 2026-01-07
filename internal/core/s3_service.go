@@ -1,7 +1,9 @@
 package core
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"path/filepath"
 	"strings"
 	"time"
@@ -170,6 +172,80 @@ func (s *S3Service) ListObjects(ctx context.Context, bucket, prefix, nextToken s
 
 	response.ItemsInPage = len(response.Objects)
 	return response, nil
+}
+
+// GetObject retrieves an object from S3
+func (s *S3Service) GetObject(ctx context.Context, bucket, key string) (*s3.GetObjectOutput, error) {
+	s.core.Logger.Debug().
+		Str("bucket", bucket).
+		Str("key", key).
+		Msg("Getting object")
+
+	input := &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}
+
+	output, err := s.core.S3Client.GetObject(ctx, input)
+	if err != nil {
+		s.core.Logger.Error().
+			Err(err).
+			Str("bucket", bucket).
+			Str("key", key).
+			Msg("Failed to get object")
+		return nil, err
+	}
+
+	s.core.Logger.Info().
+		Str("bucket", bucket).
+		Str("key", key).
+		Msg("Successfully retrieved object")
+
+	return output, nil
+}
+
+// PutObject uploads an object to S3
+func (s *S3Service) PutObject(ctx context.Context, bucket, key string, body io.Reader, contentType string) error {
+	s.core.Logger.Debug().
+		Str("bucket", bucket).
+		Str("key", key).
+		Str("contentType", contentType).
+		Msg("Putting object")
+
+	// Read the entire body into memory to make it seekable
+	bodyBytes, err := io.ReadAll(body)
+	if err != nil {
+		s.core.Logger.Error().
+			Err(err).
+			Str("bucket", bucket).
+			Str("key", key).
+			Msg("Failed to read request body")
+		return err
+	}
+
+	input := &s3.PutObjectInput{
+		Bucket:      aws.String(bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(bodyBytes), // Use a seekable reader without extra memory allocation
+		ContentType: aws.String(contentType),
+	}
+
+	_, err = s.core.S3Client.PutObject(ctx, input)
+	if err != nil {
+		s.core.Logger.Error().
+			Err(err).
+			Str("bucket", bucket).
+			Str("key", key).
+			Msg("Failed to put object")
+		return err
+	}
+
+	s.core.Logger.Info().
+		Str("bucket", bucket).
+		Str("key", key).
+		Msg("Successfully uploaded object")
+
+	return nil
 }
 
 // GetPresignedURL generates a presigned URL for downloading an object
